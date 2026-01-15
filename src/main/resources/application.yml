@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: proj001
+  webflux:
+    base-path: /
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 5000
+            read-timeout: 10000
+            logger-level: FULL
+    stream:
+      bindings: {}
+    function:
+      routing-expression: T(org.springframework.cloud.function.context.FunctionContextUtils).getRoutingExpression(headers)
+
+logging:
+  level:
+    root: INFO
+    it.pdl.prog001: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true

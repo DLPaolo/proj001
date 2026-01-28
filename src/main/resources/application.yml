@@ -1,36 +1,58 @@
+# Configurazioni principali di Spring Boot e moduli collegati.
 spring:
   application:
+    # Nome logico dell'applicazione (usato nei log e in alcune integrazioni).
     name: proj001
   webflux:
+    # Prefisso base per tutte le rotte WebFlux ("/" = nessun prefisso).
     base-path: /
   cloud:
+    # Configurazione client HTTP dichiarativi con OpenFeign.
     openfeign:
       client:
         config:
           default:
+            # Timeout di connessione verso i servizi remoti (ms).
             connect-timeout: 5000
+            # Timeout di lettura della risposta (ms).
             read-timeout: 10000
+            # Livello di log per le chiamate Feign (FULL = dettagli completo).
             logger-level: FULL
+    # Spring Cloud Stream: binding dei canali messaggistici (vuoto = non configurato).
     stream:
       bindings: {}
+    # Spring Cloud Function: routing dinamico della funzione leggendo un header.
+    # Esempio d'uso: se invii un messaggio con header "spring.cloud.function.definition=uppercase",
+    # viene invocata la funzione "uppercase"; con "lowercase" viene invocata "lowercase".
     function:
       routing-expression: T(org.springframework.cloud.function.context.FunctionContextUtils).getRoutingExpression(headers)
 
+# Configurazione dei log applicativi.
 logging:
   level:
     root: INFO
     it.pdl.prog001: DEBUG
 
+# Configurazione degli endpoint di gestione (Actuator).
 management:
   endpoints:
     web:
       exposure:
+        # Espone tutti gli endpoint Actuator via HTTP.
         include: "*"
   endpoint:
     health:
+      # Mostra i dettagli dello stato di salute.
       show-details: always
   health:
     livenessState:
+      # Abilita il probe di "liveness" per Kubernetes e container orchestrati.
+      # Liveness verifica se l'applicazione è ancora viva. Se fallisce, il container viene riavviato.
+      # Utilizza l'endpoint /actuator/health/liveness.
       enabled: true
     readinessState:
+      # Abilita il probe di "readiness" per Kubernetes e container orchestrati.
+      # Readiness verifica se l'applicazione è pronta a ricevere traffico.
+      # Se fallisce, il container rimane attivo ma non riceve richieste (rimosso dal load balancer).
+      # Utilizza l'endpoint /actuator/health/readiness.
       enabled: true

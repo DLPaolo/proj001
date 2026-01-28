@@ -63,7 +63,7 @@ mvn clean install
 # Esecuzione con profilo default
 mvn spring-boot:run
 
-# Esecuzione con profilo dev
+# Esecuzione con profilo dev 
 mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
 ```
 
@@ -135,9 +135,9 @@ L'applicazione supporta profili Spring per diverse configurazioni:
 mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=dev"
 ```
 
-**Custom profile (es. "svilla"):**
+**Custom profile (es. "svil"):**
 ```bash
-mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=svilla"
+mvn spring-boot:run -Dspring-boot.run.arguments="--spring.profiles.active=svil"
 ```
 
 **Nota:** I profili NON sono attivati automaticamente in application.yml. Usa sempre l'opzione `--spring.profiles.active` da CLI se desideri un profilo specifico.

@@ -1,0 +1,360 @@
+# ==============================================================================
+# DOCKER COMPOSE - AMBIENTE DI SVILUPPO
+# ==============================================================================
+# Questo file definisce l'orchestrazione multi-container per l'ambiente di
+# sviluppo dell'applicazione Spring Boot con MongoDB.
+#
+# PREREQUISITI:
+# - Docker Engine installato (versione 20.10+)
+# - Docker Compose V2 (integrato in Docker Desktop o installato separatamente)
+# - File .env configurato con le credenziali (copia .env.example in .env)
+#
+# GESTIONE CREDENZIALI:
+# Le credenziali e configurazioni sensibili sono gestite tramite file .env
+# (non committato nel repository). Docker Compose carica automaticamente
+# le variabili dal file .env presente nella stessa directory.
+#
+# COMANDI PRINCIPALI:
+# - Avvio:     docker compose up -d
+# - Stop:      docker compose stop
+# - Rimozione: docker compose down
+# - Logs:      docker compose logs -f [service_name]
+# ==============================================================================
+
+# -----------------------------------------------------------------------------
+# VERSION (opzionale da Docker Compose V2, ma utile per compatibilità)
+# -----------------------------------------------------------------------------
+# Specifica la versione dello schema del file docker-compose.
+# La versione 3.8 è compatibile con Docker Engine 19.03.0+ e supporta tutte
+# le funzionalità necessarie per questo progetto.
+version: "3.8" 
+
+# -----------------------------------------------------------------------------
+# SERVICES: Definizione dei Container
+# -----------------------------------------------------------------------------
+# I services sono i container che verranno creati ed eseguiti.
+# Ogni service rappresenta un componente dell'applicazione.
+services:
+
+  # ---------------------------------------------------------------------------
+  # SERVICE: mongodb
+  # ---------------------------------------------------------------------------
+  # Container per il database MongoDB Community Edition.
+  # MongoDB è un database NoSQL document-oriented utilizzato dall'applicazione.
+  mongodb:
+
+    # IMMAGINE BASE
+    # Utilizziamo l'immagine ufficiale MongoDB dal Docker Hub.
+    # Il tag "latest" scarica sempre l'ultima versione Community Edition stabile.
+    # NOTA: In produzione è consigliato usare tag specifici (es: mongo:7.0.5)
+    # per garantire riproducibilità e stabilità.
+    image: mongo:latest
+
+    # NOME DEL CONTAINER
+    # Assegna un nome personalizzato al container invece del nome generato
+    # automaticamente da Docker Compose (es: proj001_mongodb_1).
+    # Utile per identificare facilmente il container nei comandi Docker.
+    container_name: proj001-mongodb
+
+    # RESTART POLICY
+    # Definisce il comportamento di riavvio del container.
+    # - "unless-stopped": il container si riavvia sempre, tranne se fermato
+    #   manualmente con "docker stop" o "docker compose stop".
+    # - Altre opzioni: "no", "always", "on-failure"
+    restart: unless-stopped
+
+    # VARIABILI D'AMBIENTE
+    # Le variabili d'ambiente configurano il comportamento del container MongoDB.
+    # I valori sono caricati dal file .env nella root del progetto.
+    # Sintassi: ${NOME_VARIABILE} o ${NOME_VARIABILE:-valore_default}
+    environment:
+
+      # Username dell'utente amministratore del database.
+      # Questo utente avrà privilegi completi su tutti i database MongoDB.
+      # Il valore viene letto dalla variabile MONGO_ROOT_USERNAME nel file .env
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+
+      # Password dell'utente amministratore.
+      # Il valore viene letto dalla variabile MONGO_ROOT_PASSWORD nel file .env
+      # IMPORTANTE: Assicurarsi che il file .env sia presente e non committato!
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+
+      # Database iniziale creato al primo avvio del container.
+      # Utile per inizializzare automaticamente un database per l'applicazione.
+      # Il valore viene letto dalla variabile MONGO_INITDB_DATABASE nel file .env
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE}
+
+    # PORTE ESPOSTE
+    # Mappatura delle porte tra HOST e CONTAINER.
+    # Formato: "PORTA_HOST:PORTA_CONTAINER"
+    # La porta dell'host è configurabile tramite variabile d'ambiente.
+    ports:
+      # La porta 27017 è la porta di default di MongoDB.
+      # Questa mappatura permette di:
+      # - Connettere l'applicazione Spring Boot a MongoDB via localhost:27017
+      # - Usare client esterni (MongoDB Compass, Robo 3T) per debug/sviluppo
+      # NOTA: In produzione, evitare di esporre porte DB all'esterno;
+      # i container comunicano tramite rete interna Docker.
+      # La porta host può essere modificata nel file .env
+      - "${MONGODB_HOST_PORT:-27017}:27017"
+
+    # VOLUMI
+    # I volumi garantiscono la persistenza dei dati oltre il ciclo di vita
+    # del container. Senza volumi, i dati vengono persi quando il container
+    # viene rimosso (docker compose down).
+    volumes:
+      # Volume nominato per i dati MongoDB.
+      # - "mongodb_data": nome del volume (definito nella sezione "volumes" in basso)
+      # - "/data/db": path interno al container dove MongoDB salva i dati
+      # Questo mapping assicura che tutti i database, collezioni e documenti
+      # persistano su disco anche dopo riavvii o rimozioni del container.
+      - mongodb_data:/data/db
+
+      # Volume nominato per i log di configurazione MongoDB.
+      # - "/data/configdb": path dove MongoDB salva configurazioni e metadati
+      # Garantisce la persistenza della configurazione del database.
+      - mongodb_config:/data/configdb
+
+    # RETE
+    # Specifica a quale rete Docker il container deve essere connesso.
+    # Le reti permettono la comunicazione tra container e l'isolamento.
+    networks:
+      - app-network
+
+    # HEALTHCHECK (opzionale ma consigliato)
+    # Verifica periodicamente lo stato di salute del container MongoDB.
+    # Docker maricherà il container come "healthy" o "unhealthy".
+    healthcheck:
+      # Comando eseguito per verificare lo stato.
+      # "mongosh" è il nuovo client MongoDB Shell (sostituisce "mongo").
+      # "--eval 'db.runCommand({ ping: 1 })'" esegue un comando di ping al DB.
+      # Se il comando restituisce successo (exit code 0), il container è healthy.
+      test: ["CMD", "mongosh", "--eval", "db.runCommand({ ping: 1 })", "--quiet"]
+
+      # Intervallo tra ogni check (ogni 10 secondi).
+      interval: 10s
+
+      # Timeout per ogni check (5 secondi).
+      timeout: 5s
+
+      # Numero di tentativi falliti prima di marcare il container come unhealthy.
+      retries: 3
+
+      # Tempo di attesa prima di iniziare i check (MongoDB impiega tempo ad avviarsi).
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # SERVICE: app
+  # ---------------------------------------------------------------------------
+  # Container per l'applicazione Spring Boot.
+  app:
+
+    # BUILD CONTEXT
+    # Invece di usare un'immagine pre-costruita, specifichiamo che Docker
+    # deve costruire l'immagine usando il Dockerfile presente nel progetto.
+    build:
+      # Context: directory contenente il Dockerfile e i file sorgente.
+      # "." significa la directory corrente (dove si trova docker-compose.yml).
+      context: .
+
+      # Dockerfile: nome del file Dockerfile da utilizzare.
+      # Default è "Dockerfile", ma può essere personalizzato (es: Dockerfile.dev).
+      dockerfile: Dockerfile
+
+    # NOME DEL CONTAINER
+    container_name: proj001-app
+
+    # RESTART POLICY
+    restart: unless-stopped
+
+    # VARIABILI D'AMBIENTE
+    # Queste variabili configurano l'applicazione Spring Boot per connettersi
+    # a MongoDB e per altre impostazioni runtime.
+    # I valori sensibili sono caricati dal file .env
+    environment:
+
+      # PROFILO SPRING BOOT
+      # Attiva il profilo configurato nel file .env (es: dev, test, prod).
+      # Questo permette di caricare configurazioni specifiche (es: application-dev.yml).
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILE:-dev}
+
+      # CONNECTION STRING MONGODB
+      # URI di connessione a MongoDB costruita dinamicamente usando variabili .env
+      # Formato: mongodb://[username]:[password]@[host]:[port]/[database]?[options]
+      # - "${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}": credenziali dal file .env
+      # - "mongodb": hostname del servizio MongoDB (nome del service in docker-compose)
+      #   Docker Compose crea automaticamente un DNS interno che risolve i nomi
+      #   dei services, quindi "mongodb" viene risolto all'IP del container MongoDB.
+      # - "27017": porta di MongoDB (porta interna al container, non quella dell'host)
+      # - "${MONGO_INITDB_DATABASE}": nome del database dal file .env
+      # - "authSource=${MONGO_AUTH_DATABASE}": database di autenticazione dal file .env
+      SPRING_DATA_MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/${MONGO_INITDB_DATABASE}?authSource=${MONGO_AUTH_DATABASE:-admin}
+
+      # NOTA ALTERNATIVA:
+      # È possibile anche specificare i parametri separatamente usando variabili .env:
+      # SPRING_DATA_MONGODB_HOST: mongodb
+      # SPRING_DATA_MONGODB_PORT: 27017
+      # SPRING_DATA_MONGODB_DATABASE: ${MONGO_INITDB_DATABASE}
+      # SPRING_DATA_MONGODB_USERNAME: ${MONGO_ROOT_USERNAME}
+      # SPRING_DATA_MONGODB_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      # SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE: ${MONGO_AUTH_DATABASE}
+
+    # PORTE ESPOSTE
+    ports:
+      # Mappatura della porta 8080 (Spring Boot default).
+      # Permette di accedere all'applicazione da:
+      # - Browser: http://localhost:8080
+      # - Client HTTP (Postman, curl): http://localhost:8080/api/...
+      # La porta host può essere modificata nel file .env
+      - "${APP_HOST_PORT:-8080}:8080"
+
+    # DIPENDENZE
+    # Specifica l'ordine di avvio dei container.
+    # L'applicazione Spring Boot dipende da MongoDB, quindi MongoDB
+    # deve essere avviato PRIMA dell'applicazione.
+    depends_on:
+      # Dipendenza base: attende che il container MongoDB sia "started".
+      # NOTA: "started" NON significa "ready" (MongoDB potrebbe non essere
+      # ancora pronto ad accettare connessioni).
+      mongodb:
+        # CONDITION: specifica quando considerare la dipendenza soddisfatta.
+        # - "service_healthy": attende che MongoDB sia "healthy" secondo
+        #   l'healthcheck definito sopra. Questo garantisce che MongoDB sia
+        #   effettivamente pronto ad accettare connessioni prima di avviare l'app.
+        # - Altre opzioni: "service_started" (default), "service_completed_successfully"
+        condition: service_healthy
+
+    # RETE
+    networks:
+      - app-network
+
+    # VOLUMI (opzionali per sviluppo con hot-reload)
+    # NOTA: Questi volumi sono commentati perché non sempre necessari.
+    # Decommentare se si vuole sviluppo con hot-reload (es: Spring Boot DevTools).
+    # volumes:
+    #   # Mappa il codice sorgente locale nel container per hot-reload.
+    #   - ./src:/app/src
+    #   # Esclude la cartella target per evitare conflitti.
+    #   - /app/target
+
+# -----------------------------------------------------------------------------
+# VOLUMES: Definizione dei Volumi Nominati
+# -----------------------------------------------------------------------------
+# I volumi nominati sono gestiti da Docker e persistono indipendentemente
+# dal ciclo di vita dei container. Sono la soluzione consigliata per la
+# persistenza dei dati in Docker Compose.
+volumes:
+
+  # Volume per i dati MongoDB (database, collezioni, documenti).
+  # Docker crea e gestisce questo volume nel suo storage interno.
+  # Percorso fisico su Linux: /var/lib/docker/volumes/proj001_mongodb_data/_data
+  # Per ispezionare: docker volume inspect proj001_mongodb_data
+  mongodb_data:
+    # DRIVER (opzionale, default è "local")
+    # Il driver "local" salva i dati sul filesystem locale dell'host.
+    # Altri driver permettono storage remoto (es: NFS, cloud storage).
+    driver: local
+
+  # Volume per i file di configurazione MongoDB.
+  mongodb_config:
+    driver: local
+
+# -----------------------------------------------------------------------------
+# NETWORKS: Definizione delle Reti
+# -----------------------------------------------------------------------------
+# Le reti permettono ai container di comunicare tra loro in modo isolato.
+# Docker Compose crea automaticamente una rete di default, ma definirne
+# una esplicita offre maggiore controllo e chiarezza.
+networks:
+
+  # Rete bridge personalizzata per la comunicazione tra app e MongoDB.
+  app-network:
+    # DRIVER: "bridge" crea una rete privata isolata sull'host.
+    # I container sulla stessa rete bridge possono comunicare tra loro
+    # usando i nomi dei services come hostname (DNS automatico).
+    # altre opzioni: overlay, macvlan, host.
+    # Con host networking, i container condividono la rete dell'host (non isolato).
+    # Con overlay, usato per swarm mode e cluster multi-host. In pratica usati quando
+    # si ha bisogno di reti distribuite su più host Docker. Dal punto di vista della sicurezza,
+    # le reti overlay offrono isolamento simile alle reti bridge, ma con la capacità di
+    # estendersi su più nodi.
+    # con macvlan, i container ottengono un indirizzo MAC e IP unici sulla rete fisica dell'host e
+    # possono comunicare direttamente con altri dispositivi sulla stessa rete fisica, ma dal punto
+    # di vista della sicurezza, macvlan offre meno isolamento rispetto a bridge o overlay,
+    # poiché i container sono esposti direttamente sulla rete fisica.
+    # In questo progetto usiamo bridge per semplicità e isolamento.  
+    driver: bridge 
+
+    # PROPRIETÀ AGGIUNTIVE (opzionali)
+    # Decommentare per personalizzare la rete.
+    # driver_opts:
+    #   com.docker.network.bridge.name: proj001-bridge
+    # ipam:
+    #   config:
+    #     - subnet: 172.25.0.0/16
+
+# ==============================================================================
+# GUIDA ALL'USO
+# ==============================================================================
+#
+# 0. CONFIGURAZIONE INIZIALE (da fare una sola volta):
+#    cp .env.example .env
+#    # Modifica .env con le tue credenziali reali
+#    # IMPORTANTE: Non committare mai il file .env nel repository!
+#
+# 1. PRIMO AVVIO (build + start):
+#    docker compose up -d --build
+#    - "--build" forza la ricostruzione dell'immagine dell'app
+#    - "-d" (detached mode) avvia i container in background
+#    - Le credenziali vengono caricate automaticamente dal file .env
+#
+# 2. AVVIO SUCCESSIVO (senza rebuild):
+#    docker compose up -d
+#
+# 3. VISUALIZZARE I LOG:
+#    docker compose logs -f          # Tutti i services
+#    docker compose logs -f app      # Solo l'applicazione
+#    docker compose logs -f mongodb  # Solo MongoDB
+#
+# 4. FERMARE I CONTAINER (senza rimuovere):
+#    docker compose stop
+#    - I container vengono fermati ma non rimossi
+#    - I dati nei volumi persistono
+#
+# 5. RIAVVIARE I CONTAINER FERMATI:
+#    docker compose start
+#
+# 6. FERMARE E RIMUOVERE I CONTAINER:
+#    docker compose down
+#    - Rimuove i container e la rete
+#    - I volumi NON vengono rimossi (dati persistono)
+#
+# 7. RIMUOVERE TUTTO (container + volumi):
+#    docker compose down -v
+#    - ATTENZIONE: elimina anche i dati nel database!
+#
+# 8. RICOSTRUIRE L'APPLICAZIONE:
+#    docker compose build app
+#    docker compose up -d app
+#
+# 9. VERIFICARE LO STATO DEI SERVICES:
+#    docker compose ps
+#
+# 10. ESEGUIRE COMANDI IN UN CONTAINER:
+#     docker compose exec app bash       # Shell nell'app
+#     docker compose exec mongodb mongosh # MongoDB shell
+#
+# 11. ISPEZIONARE I VOLUMI:
+#     docker volume ls
+#     docker volume inspect proj001_mongodb_data
+#
+# ==============================================================================
+# CONNECTION STRING PER CLIENT ESTERNI (MongoDB Compass, Robo 3T, ecc.)
+# ==============================================================================
+# Usa le credenziali configurate nel tuo file .env:
+# mongodb://[MONGO_ROOT_USERNAME]:[MONGO_ROOT_PASSWORD]@localhost:[MONGODB_HOST_PORT]/?authSource=[MONGO_AUTH_DATABASE]
+#
+# Esempio con valori di default:
+# mongodb://admin:password123@localhost:27017/?authSource=admin
+#
+# ==============================================================================

@@ -42,7 +42,7 @@ management:
         include: "*"
   endpoint:
     health:
-      # Mostra i dettagli dello stato di salute.
+      # Mostra i dettagli dello stato di salute. I valori possibili sono "never", "when-authorized", "always".
       show-details: always
   health:
     livenessState:

@@ -1,7 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                           MICROSERVIZIO PROJ001                              ║
+║                    Consumer della Libreria di Formattazione                  ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  Questo microservizio Spring Boot utilizza la libreria formatter-plugin      ║
+║  per garantire una formattazione del codice consistente.                     ║
+║                                                                              ║
+║  ARCHITETTURA DELLA FORMATTAZIONE:                                           ║
+║  ┌─────────────────────────────────────────────────────────────────────────┐ ║
+║  │  proj001Lib (Libreria)              proj001 (Microservizio)             │ ║
+║  │  ┌─────────────────────┐            ┌─────────────────────────────┐     │ ║
+║  │  │  formatter-plugin   │───────────>│  Dipendenza Maven           │     │ ║
+║  │  │  • ChainCollapser   │  (scope:   │                             │     │ ║
+║  │  │  • eclipse-formatter│  provided) │  maven-dependency-plugin    │     │ ║
+║  │  │  • checkstyle.xml   │            │  estrae i file XML          │     │ ║
+║  │  └─────────────────────┘            │                             │     │ ║
+║  │                                     │  spotless-maven-plugin      │     │ ║
+║  │                                     │  formatta con Eclipse JDT   │     │ ║
+║  │                                     │                             │     │ ║
+║  │                                     │  exec-maven-plugin          │     │ ║
+║  │                                     │  esegue ChainCollapser      │     │ ║
+║  │                                     └─────────────────────────────┘     │ ║
+║  └─────────────────────────────────────────────────────────────────────────┘ ║
+║                                                                              ║
+║  COMANDI DI FORMATTAZIONE:                                                   ║
+║    mvn -Pformat              → Formattazione completa (comando consigliato)  ║
+║    mvn spotless:check        → Verifica senza modificare                     ║
+║    mvn checkstyle:check      → Verifica regole di stile                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+-->
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                              http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
@@ -9,7 +40,7 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.3.5</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
     </parent>
 
     <groupId>it.pdl</groupId>
@@ -28,7 +59,6 @@
         <spring-cloud.version>2023.0.3</spring-cloud.version>
     </properties>
 
-    <!-- Spring Cloud Dependency Management - Import BOM -->
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -42,75 +72,93 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- Spring Boot WebFlux -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
-        <!-- Spring Boot Actuator -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
 
-        <!-- Vavr -->
         <dependency>
             <groupId>io.vavr</groupId>
             <artifactId>vavr</artifactId>
             <version>0.10.4</version>
         </dependency>
 
-        <!-- Spring Cloud OpenFeign -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
 
-        <!-- Spring Cloud Function -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-function-web</artifactId>
         </dependency>
 
-        <!-- Spring Cloud Stream -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
         </dependency>
 
-        <!-- Spring Boot Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
 
-        <!-- WebFlux Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-test-autoconfigure</artifactId>
             <scope>test</scope>
         </dependency>
 
-        <!-- Reactor Test -->
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!--
+        ╔══════════════════════════════════════════════════════════════════════╗
+        ║  DIPENDENZA FORMATTER-PLUGIN                                         ║
+        ╠══════════════════════════════════════════════════════════════════════╣
+        ║  Questa dipendenza importa la libreria di formattazione.             ║
+        ║                                                                      ║
+        ║  SCOPE: provided                                                     ║
+        ║  ──────────────────────────────────────────────────────────────────  ║
+        ║  Lo scope "provided" significa che questa dipendenza:                ║
+        ║  • E' disponibile durante la compilazione                            ║
+        ║  • NON viene inclusa nel JAR finale dell'applicazione                ║
+        ║  • Serve solo per il processo di build (formattazione)               ║
+        ║                                                                      ║
+        ║  Altri scope comuni:                                                 ║
+        ║  • compile (default): inclusa nel JAR finale                         ║
+        ║  • test: disponibile solo per i test                                 ║
+        ║  • runtime: inclusa nel JAR ma non disponibile in compilazione       ║
+        ║                                                                      ║
+        ║  PREREQUISITO: La libreria deve essere installata nel repository     ║
+        ║  Maven locale. Esegui prima: cd proj001Lib && mvn install            ║
+        ╚══════════════════════════════════════════════════════════════════════╝
+        -->
+        <dependency>
+            <groupId>it.pdl.lib</groupId>
+            <artifactId>formatter-plugin</artifactId>
+            <version>1.0.0-SNAPSHOT</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
-            <!-- Spring Boot Maven Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -124,7 +172,6 @@
                 </configuration>
             </plugin>
 
-            <!-- Maven Enforcer Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
@@ -145,43 +192,288 @@
                                     <version>[3.8.0,)</version>
                                     <message>Maven 3.8.0 or higher is required</message>
                                 </requireMavenVersion>
+                                <banDuplicatePomDependencyVersions>
+                                    <message>Duplicate dependency versions are not allowed</message>
+                                </banDuplicatePomDependencyVersions>
                             </rules>
                         </configuration>
                     </execution>
                 </executions>
             </plugin>
 
-            <!-- Spotless Plugin for Code Formatting -->
+            <!--
+            ╔══════════════════════════════════════════════════════════════════════╗
+            ║  MAVEN-DEPENDENCY-PLUGIN: Estrazione File di Configurazione          ║
+            ╠══════════════════════════════════════════════════════════════════════╣
+            ║  Questo plugin estrae i file di configurazione dal JAR della         ║
+            ║  libreria formatter-plugin e li copia in una directory locale.       ║
+            ║                                                                      ║
+            ║  PROBLEMA RISOLTO:                                                   ║
+            ║  Spotless e Checkstyle hanno bisogno dei file di configurazione      ║
+            ║  sul filesystem locale, non possono leggerli da dentro un JAR.       ║
+            ║  Questo plugin "spacchetta" il JAR ed estrae solo i file necessari.  ║
+            ║                                                                      ║
+            ║  GOAL: unpack                                                        ║
+            ║  Estrae file specifici da un artefatto Maven.                        ║
+            ║                                                                      ║
+            ║  FASE: initialize                                                    ║
+            ║  ──────────────────────────────────────────────────────────────────  ║
+            ║  Le fasi Maven definiscono QUANDO un plugin viene eseguito.          ║
+            ║  La fase "initialize" e' la prima fase del lifecycle standard,       ║
+            ║  quindi l'estrazione avviene prima di qualsiasi altra operazione.    ║
+            ║                                                                      ║
+            ║  LIFECYCLE MAVEN (fasi principali):                                  ║
+            ║  validate → initialize → compile → test → package → install → deploy ║
+            ║                                                                      ║
+            ║  OUTPUT:                                                             ║
+            ║  target/formatter-config/                                            ║
+            ║  ├── eclipse-formatter.xml                                           ║
+            ║  └── checkstyle.xml                                                  ║
+            ╚══════════════════════════════════════════════════════════════════════╝
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.1</version>
+                <executions>
+                    <execution>
+                        <!--
+                        EXECUTION ID: Identificatore univoco dell'esecuzione.
+                        Utile per riferirsi a questa esecuzione specifica da riga di comando:
+                        mvn dependency:unpack@unpack-formatter-config
+
+                        La sintassi plugin:goal@execution-id permette di eseguire
+                        una specifica execution invece di tutte le execution del goal.
+                        -->
+                        <id>unpack-formatter-config</id>
+
+                        <!--
+                        PHASE: Quando eseguire questo goal nel lifecycle Maven.
+                        "initialize" e' molto presto, garantendo che i file siano
+                        disponibili per i plugin successivi (spotless, checkstyle).
+                        -->
+                        <phase>initialize</phase>
+
+                        <goals>
+                            <!--
+                            GOAL: unpack
+                            Estrae il contenuto di un artefatto Maven (JAR, WAR, ecc.)
+                            in una directory del filesystem.
+                            -->
+                            <goal>unpack</goal>
+                        </goals>
+
+                        <configuration>
+                            <!--
+                            ARTIFACT ITEMS: Lista di artefatti da estrarre.
+                            Ogni artifactItem specifica cosa estrarre e dove metterlo.
+                            -->
+                            <artifactItems>
+                                <artifactItem>
+                                    <!-- Coordinate Maven dell'artefatto da estrarre -->
+                                    <groupId>it.pdl.lib</groupId>
+                                    <artifactId>formatter-plugin</artifactId>
+                                    <version>1.0.0-SNAPSHOT</version>
+                                    <type>jar</type>
+
+                                    <!--
+                                    INCLUDES: Filtro sui file da estrarre.
+                                    Senza questo, verrebbe estratto TUTTO il JAR.
+                                    Estraiamo solo i file di configurazione necessari.
+                                    -->
+                                    <includes>eclipse-formatter.xml,checkstyle.xml</includes>
+
+                                    <!--
+                                    OUTPUT DIRECTORY: Dove mettere i file estratti.
+                                    ${project.build.directory} = target/
+                                    Quindi i file finiranno in: target/formatter-config/
+                                    -->
+                                    <outputDirectory>${project.build.directory}/formatter-config</outputDirectory>
+                                </artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+            ╔══════════════════════════════════════════════════════════════════════╗
+            ║  SPOTLESS-MAVEN-PLUGIN: Formattazione Codice con Eclipse JDT         ║
+            ╠══════════════════════════════════════════════════════════════════════╣
+            ║  Spotless e' un plugin universale per la formattazione del codice.   ║
+            ║  Supporta diversi formatter: Eclipse JDT, Google Java Format, ecc.   ║
+            ║                                                                      ║
+            ║  Noi usiamo Eclipse JDT perche':                                     ║
+            ║  • E' lo stesso formatter usato dall'IDE Eclipse                     ║
+            ║  • Permette configurazione molto granulare                           ║
+            ║  • Il file eclipse-formatter.xml puo' essere condiviso con l'IDE     ║
+            ║                                                                      ║
+            ║  GOALS DISPONIBILI:                                                  ║
+            ║  • spotless:check  → Verifica se il codice e' formattato (CI/CD)     ║
+            ║  • spotless:apply  → Formatta il codice (sviluppo locale)            ║
+            ║                                                                      ║
+            ║  NOTA: Spotless da solo non basta! Eclipse JDT ha un limite con      ║
+            ║  le catene di metodo, per questo usiamo ChainCollapser dopo.         ║
+            ╚══════════════════════════════════════════════════════════════════════╝
+            -->
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
                 <version>2.43.0</version>
                 <configuration>
                     <java>
+                        <!--
+                        INCLUDES: Pattern glob per i file da formattare.
+                        **/ significa "qualsiasi sottodirectory"
+                        *.java significa "qualsiasi file con estensione .java"
+                        -->
                         <includes>
                             <include>src/main/java/**/*.java</include>
                             <include>src/test/java/**/*.java</include>
                         </includes>
-                        <googleJavaFormat>
-                            <version>1.21.0</version>
-                        </googleJavaFormat>
+
+                        <!--
+                        ECLIPSE: Configurazione del formatter Eclipse JDT.
+                        Il file XML contiene centinaia di opzioni di formattazione:
+                        indentazione, spazi, wrapping, ecc.
+                        -->
+                        <eclipse>
+                            <!--
+                            FILE: Percorso del file di configurazione Eclipse.
+                            Questo file e' stato estratto dalla libreria dal
+                            maven-dependency-plugin nella fase "initialize".
+                            -->
+                            <file>${project.build.directory}/formatter-config/eclipse-formatter.xml</file>
+                        </eclipse>
                     </java>
                 </configuration>
             </plugin>
 
-            <!-- Checkstyle Plugin -->
+            <!--
+            ╔══════════════════════════════════════════════════════════════════════╗
+            ║  EXEC-MAVEN-PLUGIN: Esecuzione del Post-Processor ChainCollapser     ║
+            ╠══════════════════════════════════════════════════════════════════════╣
+            ║  Questo plugin esegue codice Java arbitrario durante il build.       ║
+            ║  Lo usiamo per eseguire ChainCollapser come post-processor.          ║
+            ║                                                                      ║
+            ║  PERCHE' UN POST-PROCESSOR?                                          ║
+            ║  ──────────────────────────────────────────────────────────────────  ║
+            ║  Eclipse JDT formatter con WRAP_NEXT_PER_LINE + FORCE spezza         ║
+            ║  SEMPRE le catene di metodo, anche quelle banali:                    ║
+            ║                                                                      ║
+            ║      log                                                             ║
+            ║          .debug("messaggio");     ← Troppo spezzato!                 ║
+            ║                                                                      ║
+            ║  ChainCollapser ricostruisce le catene a singolo selettore:          ║
+            ║                                                                      ║
+            ║      log.debug("messaggio");      ← Molto meglio!                    ║
+            ║                                                                      ║
+            ║  REGOLE DI CHAINCOLLAPSER:                                           ║
+            ║  1. Nome oggetto < 5 caratteri (log, Mono, List, ecc.)               ║
+            ║     Eccezione: se preceduto da "return", limite <= 3 caratteri       ║
+            ║  2. Catena dentro parentesi tonde: method(obj.getName())             ║
+            ║                                                                      ║
+            ║  GOAL: java                                                          ║
+            ║  Esegue una classe Java con un metodo main() nel classpath Maven.    ║
+            ╚══════════════════════════════════════════════════════════════════════╝
+            -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.3.0</version>
+                <configuration>
+                    <!--
+                    MAIN CLASS: Classe Java da eseguire.
+                    Deve avere un metodo: public static void main(String[] args)
+                    Il Fully Qualified Name (FQN) include il package completo.
+                    -->
+                    <mainClass>it.pdl.lib.formatter.ChainCollapser</mainClass>
+
+                    <!--
+                    INCLUDE PLUGIN DEPENDENCIES: true
+                    ────────────────────────────────────────────────────────────
+                    FONDAMENTALE! Senza questa opzione, exec:java non trova
+                    la classe ChainCollapser perche' non e' nel classpath.
+
+                    Con includePluginDependencies=true, le dipendenze dichiarate
+                    nella sezione <dependencies> del plugin vengono aggiunte
+                    al classpath durante l'esecuzione.
+
+                    Questo e' il motivo per cui dichiariamo formatter-plugin
+                    sia come dipendenza del progetto (scope provided) sia
+                    come dipendenza del plugin.
+                    -->
+                    <includePluginDependencies>true</includePluginDependencies>
+
+                    <!--
+                    ARGUMENTS: Argomenti passati al metodo main().
+                    ChainCollapser accetta directory da processare.
+                    Qui passiamo le directory del codice sorgente.
+                    -->
+                    <arguments>
+                        <argument>src/main/java</argument>
+                        <argument>src/test/java</argument>
+                    </arguments>
+                </configuration>
+
+                <!--
+                DEPENDENCIES DEL PLUGIN:
+                ────────────────────────────────────────────────────────────────
+                Queste sono dipendenze SPECIFICHE del plugin, non del progetto.
+                Vengono usate solo quando il plugin viene eseguito.
+
+                Dichiariamo formatter-plugin qui perche' contiene la classe
+                ChainCollapser che vogliamo eseguire.
+                -->
+                <dependencies>
+                    <dependency>
+                        <groupId>it.pdl.lib</groupId>
+                        <artifactId>formatter-plugin</artifactId>
+                        <version>1.0.0-SNAPSHOT</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
+            <!--
+            ╔══════════════════════════════════════════════════════════════════════╗
+            ║  CHECKSTYLE-MAVEN-PLUGIN: Validazione Regole di Stile                ║
+            ╠══════════════════════════════════════════════════════════════════════╣
+            ║  Checkstyle verifica che il codice rispetti regole di stile:         ║
+            ║  • Naming conventions (nomi di classi, metodi, variabili)            ║
+            ║  • Import order (ordinamento degli import)                           ║
+            ║  • Javadoc (presenza e formato della documentazione)                 ║
+            ║  • Code complexity (complessita' ciclomatica, ecc.)                  ║
+            ║                                                                      ║
+            ║  DIFFERENZA CON SPOTLESS:                                            ║
+            ║  • Spotless FORMATTA il codice (modifica i file)                     ║
+            ║  • Checkstyle VERIFICA le regole (segnala violazioni)                ║
+            ║                                                                      ║
+            ║  Il file checkstyle.xml e' stato estratto dalla libreria.            ║
+            ╚══════════════════════════════════════════════════════════════════════╝
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>3.3.1</version>
                 <configuration>
-                    <configLocation>config/checkstyle.xml</configLocation>
+                    <!--
+                    CONFIG LOCATION: Percorso del file di regole Checkstyle.
+                    Estratto dalla libreria formatter-plugin.
+                    -->
+                    <configLocation>${project.build.directory}/formatter-config/checkstyle.xml</configLocation>
                     <encoding>UTF-8</encoding>
+
+                    <!-- Mostra le violazioni in console -->
                     <consoleOutput>true</consoleOutput>
+
+                    <!-- false = non fallisce il build su errori (warning mode) -->
                     <failsOnError>false</failsOnError>
+
+                    <!-- Disabilita il cross-reference con i sorgenti nel report -->
                     <linkXRef>false</linkXRef>
                 </configuration>
                 <dependencies>
+                    <!-- Versione specifica di Checkstyle da usare -->
                     <dependency>
                         <groupId>com.puppycrawl.tools</groupId>
                         <artifactId>checkstyle</artifactId>
@@ -190,7 +482,6 @@
                 </dependencies>
             </plugin>
 
-            <!-- SpotBugs Plugin -->
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
@@ -200,7 +491,6 @@
                 </configuration>
             </plugin>
 
-            <!-- JaCoCo Plugin for Code Coverage -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -221,7 +511,6 @@
                 </executions>
             </plugin>
 
-            <!-- Compiler Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -239,7 +528,6 @@
                 </configuration>
             </plugin>
 
-            <!-- Surefire Plugin for Tests -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -253,4 +541,143 @@
             </plugin>
         </plugins>
     </build>
+
+    <!--
+    ╔══════════════════════════════════════════════════════════════════════════════╗
+    ║  PROFILES: Configurazioni Alternative Attivabili                             ║
+    ╠══════════════════════════════════════════════════════════════════════════════╣
+    ║  I profili Maven permettono di attivare configurazioni diverse               ║
+    ║  in base al contesto: sviluppo locale, CI/CD, produzione, ecc.               ║
+    ║                                                                              ║
+    ║  ATTIVAZIONE:                                                                ║
+    ║  • Esplicita: mvn -Pnome-profilo                                             ║
+    ║  • Automatica: basata su property, OS, file esistente, ecc.                  ║
+    ║                                                                              ║
+    ║  Il profilo "format" qui sotto raggruppa tutti i plugin di formattazione     ║
+    ║  in un unico comando: mvn -Pformat                                           ║
+    ╚══════════════════════════════════════════════════════════════════════════════╝
+    -->
+    <profiles>
+        <!--
+        ┌──────────────────────────────────────────────────────────────────────────┐
+        │  PROFILO: format                                                         │
+        │                                                                          │
+        │  Esegue la pipeline completa di formattazione con un solo comando:       │
+        │  mvn -Pformat                                                            │
+        │                                                                          │
+        │  SEQUENZA DI ESECUZIONE:                                                 │
+        │  ┌────────────────────────────────────────────────────────────────────┐  │
+        │  │  1. maven-dependency-plugin (unpack)                               │  │
+        │  │     Estrae eclipse-formatter.xml e checkstyle.xml                  │  │
+        │  │                              ↓                                     │  │
+        │  │  2. spotless-maven-plugin (apply)                                  │  │
+        │  │     Applica le regole di formattazione Eclipse JDT                 │  │
+        │  │                              ↓                                     │  │
+        │  │  3. exec-maven-plugin (java)                                       │  │
+        │  │     Esegue ChainCollapser come post-processor                      │  │
+        │  └────────────────────────────────────────────────────────────────────┘  │
+        │                                                                          │
+        │  PERCHE' UN PROFILO?                                                     │
+        │  Senza profilo, dovresti eseguire:                                       │
+        │    mvn dependency:unpack@unpack-formatter-config spotless:apply exec:java│
+        │                                                                          │
+        │  Con il profilo:                                                         │
+        │    mvn -Pformat                                                          │
+        │                                                                          │
+        │  COME FUNZIONA:                                                          │
+        │  Il profilo lega tutti i plugin alla stessa fase (validate).             │
+        │  Maven esegue i plugin nell'ordine in cui sono dichiarati.               │
+        │  Il defaultGoal=validate significa che basta "mvn -Pformat" senza goal.  │
+        └──────────────────────────────────────────────────────────────────────────┘
+        -->
+        <profile>
+            <id>format</id>
+            <build>
+                <!--
+                DEFAULT GOAL: validate
+                Se esegui "mvn -Pformat" senza specificare un goal,
+                Maven esegue automaticamente la fase "validate".
+                Tutti i plugin del profilo sono legati a questa fase.
+                -->
+                <defaultGoal>validate</defaultGoal>
+
+                <plugins>
+                    <!--
+                    STEP 1: Estrazione file di configurazione
+                    Deve essere eseguito PRIMA degli altri plugin.
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <!--
+                                ID diverso dall'execution principale per evitare conflitti.
+                                Maven unisce le execution con lo stesso ID.
+                                -->
+                                <id>unpack-formatter-config-profile</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>unpack</goal>
+                                </goals>
+                                <configuration>
+                                    <artifactItems>
+                                        <artifactItem>
+                                            <groupId>it.pdl.lib</groupId>
+                                            <artifactId>formatter-plugin</artifactId>
+                                            <version>1.0.0-SNAPSHOT</version>
+                                            <type>jar</type>
+                                            <includes>eclipse-formatter.xml,checkstyle.xml</includes>
+                                            <outputDirectory>${project.build.directory}/formatter-config</outputDirectory>
+                                        </artifactItem>
+                                    </artifactItems>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!--
+                    STEP 2: Formattazione con Eclipse JDT
+                    Usa il file eclipse-formatter.xml estratto nello step 1.
+                    -->
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>spotless-apply-profile</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <!--
+                                    GOAL: apply
+                                    Modifica i file per applicare la formattazione.
+                                    Usa "check" in CI/CD per fallire senza modificare.
+                                    -->
+                                    <goal>apply</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <!--
+                    STEP 3: Post-processing con ChainCollapser
+                    Corregge le catene di metodo dopo la formattazione Eclipse.
+                    -->
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>chain-collapser-profile</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>java</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

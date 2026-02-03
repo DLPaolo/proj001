@@ -1,10 +1,13 @@
 package it.pdl.prog001;
 
+import static java.util.Objects.requireNonNull;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
+
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -56,7 +59,7 @@ class Proj001ApplicationTest{
 		webTestClient
 			.post()
 			.uri("/api/v1/hello")
-			.contentType(MediaType.APPLICATION_JSON)
+			.contentType(requireNonNull(APPLICATION_JSON))
 			.bodyValue(Map.of("name", "Luigi"))
 			.exchange()
 			.expectStatus()

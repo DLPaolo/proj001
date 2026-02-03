@@ -1,4 +1,4 @@
-package it.pdl.prog001.dto;
+package it.pdl.prog001.hello;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

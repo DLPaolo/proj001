@@ -25,7 +25,7 @@
 ║  └─────────────────────────────────────────────────────────────────────────┘ ║
 ║                                                                              ║
 ║  COMANDI DI FORMATTAZIONE:                                                   ║
-║    mvn -Pformat              → Formattazione completa (comando consigliato)  ║
+║    mvn -formatta              → Formattazione completa (comando consigliato) ║
 ║    mvn spotless:check        → Verifica senza modificare                     ║
 ║    mvn checkstyle:check      → Verifica regole di stile                      ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -373,8 +373,27 @@
             ║     Eccezione: se preceduto da "return", limite <= 3 caratteri       ║
             ║  2. Catena dentro parentesi tonde: method(obj.getName())             ║
             ║                                                                      ║
+            ║  PARALLELISMO:                                                       ║
+            ║  ChainCollapser processa i file in parallelo. Il numero di thread    ║
+            ║  e' configurabile tramite la system property:                        ║
+            ║                                                                      ║
+            ║    threads (default: 3)                                              ║
+            ║                                                                      ║
+            ║  Configurazione:                                                     ║
+            ║  • Da plugin: <systemProperties> nel blocco <configuration>          ║
+            ║  • Da CLI:    mvn -formatta -Dthreads=8                               ║
+            ║                                                                      ║
             ║  GOAL: java                                                          ║
             ║  Esegue una classe Java con un metodo main() nel classpath Maven.    ║
+            ║                                                                      ║
+            ║  P.S.                                                                ║
+            ║  org.codehaus.mojo e' un gruppo di plugin Maven molto popolare che   ║
+            ║  fornisce funzionalita' aggiuntive non coperte dai plugin ufficiali  ║
+            ║  Apache. L'exec-maven-plugin e' uno dei plugin piu' versatili,       ║
+            ║  permettendo di eseguire codice Java personalizzato durante il       ║
+            ║  processo di build. In questo caso, lo usiamo per eseguire           ║
+            ║  ChainCollapser come post-processor dopo la formattazione con        ║
+            ║  Eclipse JDT.                                                        ║
             ╚══════════════════════════════════════════════════════════════════════╝
             -->
             <plugin>
@@ -404,6 +423,20 @@
                     come dipendenza del plugin.
                     -->
                     <includePluginDependencies>true</includePluginDependencies>
+
+                    <!--
+                    SYSTEM PROPERTIES: Configurazione di ChainCollapser.
+                    ────────────────────────────────────────────────────────────
+                    threads: numero di thread paralleli per il processing
+                    dei file .java. Default: 3.
+                    Sovrascrivibile da CLI con -Dthreads=N.
+                    -->
+                    <systemProperties>
+                        <systemProperty>
+                            <key>threads</key>
+                            <value>3</value>
+                        </systemProperty>
+                    </systemProperties>
 
                     <!--
                     ARGUMENTS: Argomenti passati al metodo main().
@@ -481,7 +514,24 @@
                     </dependency>
                 </dependencies>
             </plugin>
-
+            
+            <!--
+            ╔═══════════════════════════════════════════════════════════════════════╗
+            ║  SPOTBUGS-MAVEN-PLUGIN: Analisi Statica del Bytecode                  ║
+            ╠═══════════════════════════════════════════════════════════════════════╣
+            ║  Scopo: rilevare bug comuni analizzando il bytecode Java.             ║
+            ║  Nota: failOnError=false mantiene il build in warning mode.           ║
+            ║                                                                       ║
+            ║  ESEMPIO VELOCE:                                                      ║
+            ║  • Comando: mvn spotbugs:spotbugs                                     ║
+            ║  • Output: target/spotbugsXml.xml con le segnalazioni                 ║
+            ║                                                                       ║
+            ║  QUANDO ENTRA IN FUNZIONE:                                            ║
+            ║  • Solo quando richiami esplicitamente il goal (es. spotbugs:spotbugs)║
+            ║  • Non e' legato a una fase del lifecycle per default                 ║
+            ║
+            ╚═══════════════════════════════════════════════════════════════════════╝
+            -->
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
@@ -540,6 +590,47 @@
                 </configuration>
             </plugin>
         </plugins>
+
+        <!--
+        ┌──────────────────────────────────────────────────────────────────────────┐
+        │  M2E LIFECYCLE MAPPING                                                   │
+        │                                                                          │
+        │  m2e (integrazione Maven di Eclipse/VSCode) non sa gestire alcuni goal   │
+        │  Maven durante il build dell'IDE. Senza questa configurazione, m2e       │
+        │  segnala errori su goal come "unpack" che non hanno un connector m2e.    │
+        │                                                                          │
+        │  <ignore/> dice a m2e: "non eseguire questo goal durante il build IDE,   │
+        │  lascialo al build Maven da riga di comando".                            │
+        └──────────────────────────────────────────────────────────────────────────┘
+        -->
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.eclipse.m2e</groupId>
+                    <artifactId>lifecycle-mapping</artifactId>
+                    <version>1.0.0</version>
+                    <configuration>
+                        <lifecycleMappingMetadata>
+                            <pluginExecutions>
+                                <pluginExecution>
+                                    <pluginExecutionFilter>
+                                        <groupId>org.apache.maven.plugins</groupId>
+                                        <artifactId>maven-dependency-plugin</artifactId>
+                                        <versionRange>[3.0,)</versionRange>
+                                        <goals>
+                                            <goal>unpack</goal>
+                                        </goals>
+                                    </pluginExecutionFilter>
+                                    <action>
+                                        <ignore />
+                                    </action>
+                                </pluginExecution>
+                            </pluginExecutions>
+                        </lifecycleMappingMetadata>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 
     <!--
@@ -554,7 +645,7 @@
     ║  • Automatica: basata su property, OS, file esistente, ecc.                  ║
     ║                                                                              ║
     ║  Il profilo "format" qui sotto raggruppa tutti i plugin di formattazione     ║
-    ║  in un unico comando: mvn -Pformat                                           ║
+    ║  in un unico comando: mvn -formatta                                           ║
     ╚══════════════════════════════════════════════════════════════════════════════╝
     -->
     <profiles>
@@ -563,7 +654,7 @@
         │  PROFILO: format                                                         │
         │                                                                          │
         │  Esegue la pipeline completa di formattazione con un solo comando:       │
-        │  mvn -Pformat                                                            │
+        │  mvn -formatta                                                            │
         │                                                                          │
         │  SEQUENZA DI ESECUZIONE:                                                 │
         │  ┌────────────────────────────────────────────────────────────────────┐  │
@@ -582,20 +673,30 @@
         │    mvn dependency:unpack@unpack-formatter-config spotless:apply exec:java│
         │                                                                          │
         │  Con il profilo:                                                         │
-        │    mvn -Pformat                                                          │
+        │    mvn -formatta                                                          │
         │                                                                          │
         │  COME FUNZIONA:                                                          │
         │  Il profilo lega tutti i plugin alla stessa fase (validate).             │
         │  Maven esegue i plugin nell'ordine in cui sono dichiarati.               │
-        │  Il defaultGoal=validate significa che basta "mvn -Pformat" senza goal.  │
+        │  Il defaultGoal=validate significa che basta "mvn -formatta" senza goal.  │
         └──────────────────────────────────────────────────────────────────────────┘
         -->
         <profile>
-            <id>format</id>
+            <id>formatta</id>
+            <properties>
+                <!--
+                skipUnpack: se true, salta l'estrazione dei file di configurazione
+                dal JAR formatter-plugin. Utile quando i file sono gia' presenti
+                in target/formatter-config/ e non sono cambiati.
+                Default: false (esegue sempre l'unpack).
+                Uso: mvn -Pformatta -DskipUnpack    (salta l'estrazione)
+                -->
+                <skipUnpack>false</skipUnpack>
+            </properties>
             <build>
                 <!--
                 DEFAULT GOAL: validate
-                Se esegui "mvn -Pformat" senza specificare un goal,
+                Se esegui "mvn -formatta" senza specificare un goal,
                 Maven esegue automaticamente la fase "validate".
                 Tutti i plugin del profilo sono legati a questa fase.
                 -->
@@ -605,6 +706,7 @@
                     <!--
                     STEP 1: Estrazione file di configurazione
                     Deve essere eseguito PRIMA degli altri plugin.
+                    Skippabile con: mvn -Pformatta -DskipUnpack
                     -->
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
@@ -621,6 +723,7 @@
                                     <goal>unpack</goal>
                                 </goals>
                                 <configuration>
+                                    <skip>${skipUnpack}</skip>
                                     <artifactItems>
                                         <artifactItem>
                                             <groupId>it.pdl.lib</groupId>
